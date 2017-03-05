@@ -71,7 +71,7 @@ class Unemployment:
 		except KeyboardInterrupt:
 			sys.exit(1)
 
-		return data
+		return self._result
 
 
 	def _doWork(self):
