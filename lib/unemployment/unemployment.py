@@ -5,6 +5,12 @@ from lxml import html
 import json
 from urllib import urlencode
 
+from urlparse import urlparse
+from threading import Thread
+import httplib
+from Queue import Queue
+import time
+
 class Unemployment:
 	"""
 	Unemployment
@@ -34,26 +40,55 @@ class Unemployment:
 		self._periods = self._fetch_periods()
 		self._years = self._fetch_years()
 		self._datatypes = self._fetch_datatypes()
-		print self._datatypes
+
+		self._concurrent = 50
+		self._q = Queue( self._concurrent * 2 )
+		self._result = []
 
 	def scrape(self):
 		"""
 		
 		"""
 
-		data = []
-		for year in self._years:
+		for i in range( self._concurrent ):
+		    t = Thread(target=self._doWork)
+		    t.daemon = True
+		    t.start()
 
-			for period in self._periods:
+		try:
+			for year in self._years:
 
-				for state in self._states:
+				for period in self._periods:
 
-					for datatype in self._datatypes:
+					for state in self._states:
 
-						result = self._request(self._data(state.keys()[0], datatype.keys()[0], year.keys()[0], period.keys()[0]))
-						data.append(result)
+						for datatype in self._datatypes:
+
+							self._q.put( json.dumps( self._data( state.keys()[0], datatype.keys()[0], year.keys()[0], period.keys()[0] ) ) )
+
+			self._q.join()
+
+		except KeyboardInterrupt:
+			sys.exit(1)
 
 		return data
+
+
+	def _doWork(self):
+		while True:
+			data = self._q.get()
+			data = json.loads(data)
+			print data
+			result = self._request(data)
+			if result is not False:
+				self._result.append(result)
+
+			self._q.task_done()
+		"""
+		result = self._request(data)
+		self._data.append(result)
+		self._q.task_done()
+		"""
 
 	def _headers(self):
 		"""
