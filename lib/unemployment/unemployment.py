@@ -42,7 +42,7 @@ class Unemployment:
 		self._years = self._fetch_years()
 		self._datatypes = self._fetch_datatypes()
 
-		self._concurrent = 50
+		self._concurrent = 100
 		self._q = Queue( self._concurrent * 2 )
 		self._result = {}
 
@@ -96,11 +96,6 @@ class Unemployment:
 
 							if datatype.keys()[0] not in self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ][ state.values()[0].lower().replace(' ', '_') ]:
 								self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ][ state.values()[0].lower().replace(' ', '_') ][ datatype.keys()[0] ] = []
-
-							count += 1
-							if count > 500:
-								self._q.join()
-								return self._result
 
 							packet = {
 								"query": self._data( state.keys()[0], datatype.keys()[0], year.keys()[0], period.keys()[0] ),
@@ -187,6 +182,13 @@ class Unemployment:
 
 		# Simple GET request to get started with states data.
 		r = requests.post(self._url, headers=self._headers(), cookies=self._cookies(), data=data)
+
+		f = open('pages/' + data['year'] + "-" + data['period'] + "-" + data['state'] + "-" + data['datatype'] + "-" + data['map'] + "-" + data['seasonal'] + "-" + data['survey'], 'w')
+		f.write(r.text)
+		f.close()
+		print data['year'] + "-" + data['period'] + "-" + data['state'] + "-" + data['datatype'] + "-" + data['map'] + "-" + data['seasonal'] + "-" + data['survey']
+		return False
+
 		tree = html.document_fromstring(r.text)
 
 		# Get State
