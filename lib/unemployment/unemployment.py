@@ -36,6 +36,7 @@ class Unemployment:
 		self._base_page = requests.get(self._url, params={ k: v for k, v in self._data().iteritems() if v is not None })
 		self._tree = html.document_fromstring(self._base_page.text)
 
+		# Get the entirety of these four entities that will be iterated over.
 		self._states = self._fetch_states()
 		self._periods = self._fetch_periods()
 		self._years = self._fetch_years()
@@ -43,28 +44,75 @@ class Unemployment:
 
 		self._concurrent = 50
 		self._q = Queue( self._concurrent * 2 )
-		self._result = []
+		self._result = {}
 
 	def scrape(self):
 		"""
-		
+		Primary function that executes the scrape.
 		"""
 
+		# Spin up threads per class variable.
 		for i in range( self._concurrent ):
-		    t = Thread(target=self._doWork)
-		    t.daemon = True
-		    t.start()
+			t = Thread(target=self._doWork)
+			t.daemon = True
+			t.start()
 
+		# Set counter for testing.
+		count = 0
+
+		# Try / Except for queue'ing and threading.
 		try:
+
+			# Years
 			for year in self._years:
 
+				# Add year as key.
+				if year.keys()[0] not in self._result:
+					self._result[ int(year.keys()[0]) ] = {}
+
+				# Period (i.e. month, year)
 				for period in self._periods:
 
+					if period.keys()[0] not in self._result[ int(year.keys()[0]) ]:
+						self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ] = {}
+						self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ]['details'] = {
+							"key": period.keys()[0],
+							"name": period.values()[0],
+							"permalink": period.values()[0].lower().replace(' ', '_')
+						}
+
+					# State
 					for state in self._states:
+
+						if state.values()[0].lower().replace(' ', '_') not in self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ]:
+							self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ][ state.values()[0].lower().replace(' ', '_') ] = {}
+							self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ][ state.values()[0].lower().replace(' ', '_') ]['details'] = {
+								"key": state.keys()[0],
+								"name": state.values()[0],
+								"permalink": state.values()[0].lower().replace(' ', '_')
+							}
 
 						for datatype in self._datatypes:
 
-							self._q.put( json.dumps( self._data( state.keys()[0], datatype.keys()[0], year.keys()[0], period.keys()[0] ) ) )
+							if datatype.keys()[0] not in self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ][ state.values()[0].lower().replace(' ', '_') ]:
+								self._result[ int(year.keys()[0]) ][ period.values()[0].lower().replace(' ', '_') ][ state.values()[0].lower().replace(' ', '_') ][ datatype.keys()[0] ] = []
+
+							count += 1
+							if count > 500:
+								self._q.join()
+								return self._result
+
+							packet = {
+								"query": self._data( state.keys()[0], datatype.keys()[0], year.keys()[0], period.keys()[0] ),
+								"keys": {
+									"state": state.values()[0].lower().replace(' ', '_'),
+									"datatype": datatype.keys()[0],
+									"year": int(year.keys()[0]),
+									"period": period.values()[0].lower().replace(' ', '_')
+								}
+							}
+
+							self._q.put( json.dumps( packet ) )
 
 			self._q.join()
 
@@ -78,10 +126,9 @@ class Unemployment:
 		while True:
 			data = self._q.get()
 			data = json.loads(data)
-			print data
-			result = self._request(data)
+			result = self._request(data['query'])
 			if result is not False:
-				self._result.append(result)
+				self._result[ data['keys']['year'] ][ data['keys']['period'] ][ data['keys']['state'] ][ data['keys']['datatype'] ].append(result)
 
 			self._q.task_done()
 		"""
