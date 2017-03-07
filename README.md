@@ -11,4 +11,4 @@ $ python transform.py
 
 `transform.py` iterates through files in `data/pages/` and creates `result.json` at the root of the project.
 
-By Jay Ravaliy
+By Jay Ravaliya
