@@ -11,4 +11,6 @@ $ python transform.py
 
 `transform.py` iterates through files in `data/pages/` and creates `result.json` at the root of the project.
 
+For the full dataset on Kaggle, visit: https://www.kaggle.com/jayrav13/unemployment-by-county-us
+
 By Jay Ravaliya
