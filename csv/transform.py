@@ -6,6 +6,7 @@ f = open("../result.json", "r")
 data = json.load(f)
 
 output = open("output.csv", "a+")
+output.write("Year,Month,State,County,Rate\n")
 
 for year, months in data.iteritems():
 	months.pop("Annual")
@@ -15,7 +16,7 @@ for year, months in data.iteritems():
 
 			for county, rate in categories["Unemployment Rate"].iteritems():
 
-				output.write("\t".join([year, month, state, county, str(rate)]) + "\n")
+				output.write(",".join([year, month, state, county, str(rate)]) + "\n")
 
 f.close()
 output.close()
